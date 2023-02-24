@@ -16,6 +16,8 @@ You can take a look at the [ER20 sample contract](https://github.com/vyperlang/v
 It is fine to copy some of that code.
 Note, that you do not need to implement ERC20Detailed, just ERC20.
 
+You need to implement a `buyToken` and `sellToken` method that convert Ether into the token and vice versa.
+
 ## Voting
 The voting process has two steps.
 
@@ -23,10 +25,11 @@ First, someone has to create a *proposal*. For simplicity, a proposal consists o
 If the proposal succeeds, `i` Ether will be transferred to the specified address.
 
 The function to create a proposal is listed below.
-The function should return a unique number that represents the proposal's identifier.
+The first argument is a unique identifier (pick a random number) for the proposal.
+The call should fail if the UID is already in use or if the amount specified is zero.
 
 ```vyper
-def createProposal(_recipient: address, _amount: uint256) -> uint256
+def createProposal(_uid: uint256, _recipient: address, _amount: uint256)
 ```
 
 Second, stakeholders need to *approve* a proposal.
@@ -36,6 +39,7 @@ You can also assume that no new tokens are issued while the voting occurs.
 
 The voting mechanism then just takes the proposal identifier as an argument and must be sent from a stakeholders account.
 If the entity calling the function is not a stakeholder, the transaction should be reverted.
+Similarly, if the caller already voted the call should fail.
 
 ```vyper
 def approveProposal(_proposal_id: uint256)
