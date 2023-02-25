@@ -44,3 +44,9 @@ Similarly, if the caller already voted the call should fail.
 ```vyper
 def approveProposal(_proposal_id: uint256)
 ```
+
+## Simplifications
+
+* You do not need to handle the case where a proposal asks for more money than it is stored in the contract. We will not test for this.
+
+* `sellToken` in this form would not exist in a real DAO. You also do not need to handle the case where the DAO does not have enough money to execute `sellToken`.
