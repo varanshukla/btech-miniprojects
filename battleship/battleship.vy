@@ -20,6 +20,14 @@ FIELD_BOAT: constant(int32) = 1
 FIELD_HIT: constant(int32) = 2
 
 players: immutable(address[2])
+winner: int32
+
+player1_board: int32[BOARD_SIZE][BOARD_SIZE]
+player2_board: int32[BOARD_SIZE][BOARD_SIZE]
+player1_count: uint32
+player2_count: uint32
+player1_hits: uint32
+player2_hits: uint32
 
 # Which player has the next turn? Only used during the SHOOT phase
 next_player: uint32
@@ -32,8 +40,13 @@ def __init__(player1: address, player2: address):
     players = [player1, player2]
     self.next_player = 0
     self.phase = PHASE_SET
-
-    #TODO initialize whatever you need here
+    self.winner = -1
+    for i in range (BOARD_SIZE):
+        for j in range(BOARD_SIZE):
+            self.player1_board[i][j] = FIELD_EMPTY
+            self.player2_board[i][j] = FIELD_EMPTY
+    self.player1_count = 0
+    self.player2_count = 0
 
 @external
 def set_field(pos_x: uint32, pos_y: uint32):
@@ -50,7 +63,31 @@ def set_field(pos_x: uint32, pos_y: uint32):
     if pos_x >= BOARD_SIZE or pos_y >= BOARD_SIZE:
         raise "Position out of bounds"
 
-    #TODO add the rest here
+    if(msg.sender == players[0]):
+        if(self.player1_count>=NUM_PIECES):
+            raise "Already set 5 pieces!"
+        elif(self.player1_board[pos_x][pos_y]!=FIELD_EMPTY):
+            raise "Boat is already set here!"
+        else:
+            self.player1_board[pos_x][pos_y]=FIELD_BOAT
+            self.player1_count+=1
+
+    elif(msg.sender == players[1]):
+        if(self.player2_count>=NUM_PIECES):
+            raise "Already set 5 pieces!"
+        elif(self.player2_board[pos_x][pos_y]!=FIELD_EMPTY):
+            raise "Boat is already set here!"
+        else:
+            self.player2_board[pos_x][pos_y]=FIELD_BOAT
+            self.player2_count+=1
+
+    else:
+        raise "Third party cannot set fields!"
+    
+    if(self.player1_count>=NUM_PIECES and self.player2_count>=NUM_PIECES):
+        self.phase=PHASE_SHOOT
+        self.player1_hits = 0
+        self.player2_hits = 0
 
 @external
 def shoot(pos_x: uint32, pos_y: uint32):
@@ -65,7 +102,32 @@ def shoot(pos_x: uint32, pos_y: uint32):
     if self.phase != PHASE_SHOOT:
         raise "Wrong phase"
 
-    # Add shooting logic and victory logic here
+    if (msg.sender!=players[self.next_player]):
+        raise "Not your chance to shoot!"
+    
+    if(msg.sender==players[0]):
+        if(self.player2_board[pos_x][pos_y]==FIELD_HIT):
+            raise "You've already shot this!"
+        if(self.player2_board[pos_x][pos_y]==FIELD_BOAT):
+            self.player1_hits+=1
+        self.player2_board[pos_x][pos_y]=FIELD_HIT
+
+    if(msg.sender==players[1]):
+        if(self.player1_board[pos_x][pos_y]==FIELD_HIT):
+            raise "You've already shot this!"
+        if(self.player1_board[pos_x][pos_y]==FIELD_BOAT):
+            self.player2_hits+=1
+        self.player1_board[pos_x][pos_y]=FIELD_HIT
+
+    self.next_player = (self.next_player+1)%2
+
+    if(self.player1_hits>=5):
+        self.winner=0
+        self.phase = PHASE_END
+    
+    if(self.player2_hits>=5):
+        self.winner=1
+        self.phase = PHASE_END
 
 @external
 @view
@@ -77,7 +139,8 @@ def has_winner() -> bool:
 def get_winner() -> address:
     ''' Returns the address of the winner's account '''
 
-    #TODO figure out who won
-
     # Raise an error if no one won yet
-    raise "No one won yet"
+    if(self.winner==-1):
+        raise "No one won yet"
+    
+    return players[self.winner]
